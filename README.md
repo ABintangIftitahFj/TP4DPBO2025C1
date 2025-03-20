@@ -31,7 +31,7 @@ Berisi GUI serta method insert update delete
 
    **Atribut Jalur Masuk:**  
    <div align="center">
-   <![image](https://github.com/user-attachments/assets/d82ded7b-ef2b-4443-968d-7878f5bdeaed)>
+   <![image](https://github.com/user-attachments/assets/43c9ab8d-4646-47dd-97c2-287d2be6f124)>
    </div>
 
 4. **DELETE Data**  
