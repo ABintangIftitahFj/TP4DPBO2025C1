@@ -6,7 +6,7 @@ Saya A Bintang iftitah FJ dengan NIM 2305995 mengerjakan Tugas Praktikum 4 dalam
 
 # Desain GUI 
 <div align = "center">
-   <![image](https://github.com/user-attachments/assets/7453fdef-aa72-4a4f-96c7-ce83efd329b9)>
+   <![image](https://github.com/user-attachments/assets/2400d59e-2fc5-4bf5-9ad2-9fc40d55ddef)>
 </div>
 
 # Desain Program 
@@ -31,7 +31,7 @@ Berisi GUI serta method insert update delete
 
    **Atribut Jalur Masuk:**  
    <div align="center">
-   ![Jalur Masuk](https://github.com/user-attachments/assets/812db005-c41b-49db-8cd4-f59acc3dc94b)
+   <![image](https://github.com/user-attachments/assets/d82ded7b-ef2b-4443-968d-7878f5bdeaed)>
    </div>
 
 4. **DELETE Data**  
@@ -41,7 +41,7 @@ Berisi GUI serta method insert update delete
 
    **Pesan Konfirmasi:**  
    <div align="center">
-   ![Konfirmasi Hapus](https://github.com/user-attachments/assets/6c9ca767-5456-430b-b7a2-9509a3d18585)
+  <![image](https://github.com/user-attachments/assets/06a3addf-ac26-45c9-9934-6cc2a7723d2c)>
    </div>
 
 # Record Program 
