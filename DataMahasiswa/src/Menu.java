@@ -6,6 +6,11 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 public class Menu extends JFrame {
     public static void main(String[] args) {
@@ -40,6 +45,7 @@ public class Menu extends JFrame {
 
     // List untuk menampung semua mahasiswa
     private ArrayList<Mahasiswa> listMahasiswa;
+    private Database database;
 
     private JPanel mainPanel;
     private JTextField nimField;
@@ -64,14 +70,14 @@ public class Menu extends JFrame {
         // Inisialisasi listMahasiswa
         listMahasiswa = new ArrayList<>();
 
+        database = new Database();
         // Inisialisasi jalurMasukGroup
         jalurMasukGroup = new ButtonGroup();
         jalurMasukGroup.add(SNBTRadioButton);
         jalurMasukGroup.add(SNBPRadioButton);
         jalurMasukGroup.add(mandiriRadioButton);
 
-        // Isi listMahasiswa
-        populateList();
+
 
         // Isi tabel mahasiswa
         mahasiswaTable.setModel(setTable());
@@ -160,49 +166,64 @@ public class Menu extends JFrame {
         });
     }
 
-    public DefaultTableModel setTable() {
+    public final DefaultTableModel setTable() {
         // Tentukan kolom tabel
         Object[] column = {"No", "NIM", "Nama", "Jenis Kelamin", "Jalur Masuk"};
-
-        // Buat objek tabel dengan kolom yang sudah dibuat
         DefaultTableModel temp = new DefaultTableModel(null, column);
 
-        // Isi tabel dengan listMahasiswa
-        for (int i = 0; i < listMahasiswa.size(); i++) {
-            Object[] row = new Object[5];
-            row[0] = i + 1;
-            row[1] = listMahasiswa.get(i).getNim();
-            row[2] = listMahasiswa.get(i).getNama();
-            row[3] = listMahasiswa.get(i).getJenisKelamin();
-            row[4] = listMahasiswa.get(i).getJalurMasuk(); // Tambahkan jalur masuk
-            temp.addRow(row);
+        listMahasiswa.clear(); // Bersihkan list sebelum diisi ulang
+
+        try {
+            ResultSet resultSet = database.selectQuery("SELECT * FROM mahasiswa");
+            int i = 0;
+            while (resultSet.next()) {
+                String nim = resultSet.getString("nim");
+                String nama = resultSet.getString("nama");
+                String jenisKelamin = resultSet.getString("jenis_kelamin");
+                String jalurMasuk = resultSet.getString("jalur_masuk");
+
+                listMahasiswa.add(new Mahasiswa(nim, nama, jenisKelamin, jalurMasuk));
+
+                Object[] row = {i + 1, nim, nama, jenisKelamin, jalurMasuk};
+                temp.addRow(row);
+                i++;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
+
         return temp;
     }
 
     public void insertData() {
-        // Ambil value dari textfield, combobox, dan radio button
         String nim = nimField.getText().trim();
         String nama = namaField.getText().trim();
         String jenisKelamin = jenisKelaminComboBox.getSelectedItem().toString();
         String jalurMasuk = getSelectedJalurMasuk();
 
         // Validasi input tidak boleh kosong
-        if (nim.isEmpty() || nama.isEmpty() || jalurMasuk.isEmpty()) {
-            JOptionPane.showMessageDialog(null, "NIM, Nama, dan Jalur Masuk tidak boleh kosong!");
+        if (nim.isEmpty() || nama.isEmpty() || jalurMasuk.isEmpty() || jenisKelamin.isEmpty()) {
+            JOptionPane.showMessageDialog(null, "tidak boleh ada data yang kosong!");
             return;
         }
 
-        // Cek duplikasi NIM
-        for (Mahasiswa m : listMahasiswa) {
-            if (m.getNim().equals(nim)) {
-                JOptionPane.showMessageDialog(null, "NIM sudah ada dalam daftar!");
+        // Cek apakah NIM sudah ada di database
+        String checkQuery = "SELECT COUNT(*) AS count FROM mahasiswa WHERE nim = '" + nim + "'";
+        try {
+            ResultSet rs = database.selectQuery(checkQuery);
+            if (rs.next() && rs.getInt("count") > 0) {
+                JOptionPane.showMessageDialog(null, "NIM sudah ada dalam database!");
                 return;
             }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return;
         }
 
-        // Tambahkan data ke dalam list
-        listMahasiswa.add(new Mahasiswa(nim, nama, jenisKelamin, jalurMasuk));
+        // Query Insert Data ke Database
+        String sql = "INSERT INTO mahasiswa (nim, nama, jenis_kelamin, jalur_masuk) VALUES ('"
+                + nim + "', '" + nama + "', '" + jenisKelamin + "', '" + jalurMasuk + "')";
+        database.insertUpdateDeleteQuery(sql);
 
         // Update tabel
         mahasiswaTable.setModel(setTable());
@@ -210,28 +231,30 @@ public class Menu extends JFrame {
         // Bersihkan form
         clearForm();
 
-        // Feedback
         JOptionPane.showMessageDialog(null, "Data berhasil ditambahkan!");
     }
 
     public void updateData() {
-        // Ambil data dari form
+        if (selectedIndex == -1) {
+            JOptionPane.showMessageDialog(null, "Pilih data yang ingin diperbarui!");
+            return;
+        }
+
         String nim = nimField.getText().trim();
         String nama = namaField.getText().trim();
         String jenisKelamin = jenisKelaminComboBox.getSelectedItem().toString();
         String jalurMasuk = getSelectedJalurMasuk();
 
-        // Validasi input tidak boleh kosong
+        // Validasi input
         if (nim.isEmpty() || nama.isEmpty() || jalurMasuk.isEmpty()) {
             JOptionPane.showMessageDialog(null, "NIM, Nama, dan Jalur Masuk tidak boleh kosong!");
             return;
         }
 
-        // Ubah data mahasiswa di list
-        listMahasiswa.get(selectedIndex).setNim(nim);
-        listMahasiswa.get(selectedIndex).setNama(nama);
-        listMahasiswa.get(selectedIndex).setJenisKelamin(jenisKelamin);
-        listMahasiswa.get(selectedIndex).setJalurMasuk(jalurMasuk);
+        // Update Data di Database
+        String sql = "UPDATE mahasiswa SET nama = '" + nama + "', jenis_kelamin = '"
+                + jenisKelamin + "', jalur_masuk = '" + jalurMasuk + "' WHERE nim = '" + nim + "'";
+        database.insertUpdateDeleteQuery(sql);
 
         // Update tabel
         mahasiswaTable.setModel(setTable());
@@ -239,23 +262,24 @@ public class Menu extends JFrame {
         // Bersihkan form
         clearForm();
 
-        // Feedback
-        JOptionPane.showMessageDialog(null, "Data berhasil diubah!");
+        JOptionPane.showMessageDialog(null, "Data berhasil diperbarui!");
     }
 
     public void deleteData() {
-        // Show confirmation dialog
-        int option = JOptionPane.showConfirmDialog(
-                null,
-                "Apakah Anda yakin ingin menghapus data ini?",
-                "Konfirmasi Hapus",
-                JOptionPane.YES_NO_OPTION
-        );
+        if (selectedIndex == -1) {
+            JOptionPane.showMessageDialog(null, "Pilih data yang ingin dihapus!");
+            return;
+        }
 
-        // If user confirms deletion
+        int option = JOptionPane.showConfirmDialog(
+                null, "Apakah Anda yakin ingin menghapus data ini?", "Konfirmasi Hapus", JOptionPane.YES_NO_OPTION);
+
         if (option == JOptionPane.YES_OPTION) {
-            // Hapus data dari list
-            listMahasiswa.remove(selectedIndex);
+            String nim = nimField.getText().trim();
+
+            // Hapus dari Database
+            String sql = "DELETE FROM mahasiswa WHERE nim = '" + nim + "'";
+            database.insertUpdateDeleteQuery(sql);
 
             // Update tabel
             mahasiswaTable.setModel(setTable());
@@ -263,10 +287,10 @@ public class Menu extends JFrame {
             // Bersihkan form
             clearForm();
 
-            // Feedback
             JOptionPane.showMessageDialog(null, "Data berhasil dihapus!");
         }
     }
+
 
     public void clearForm() {
         // Kosongkan semua textfield, combo box, dan radio button
@@ -297,28 +321,28 @@ public class Menu extends JFrame {
         }
     }
 
-    private void populateList() {
-        listMahasiswa.add(new Mahasiswa("2203999", "Amelia Zalfa Julianti", "Perempuan", "SNBT"));
-        listMahasiswa.add(new Mahasiswa("2202292", "Muhammad Iqbal Fadhilah", "Laki-laki", "SNBP"));
-        listMahasiswa.add(new Mahasiswa("2202346", "Muhammad Rifky Afandi", "Laki-laki", "Mandiri"));
-        listMahasiswa.add(new Mahasiswa("2210239", "Muhammad Hanif Abdillah", "Laki-laki", "SNBT"));
-        listMahasiswa.add(new Mahasiswa("2202046", "Nurainun", "Perempuan", "SNBP"));
-        listMahasiswa.add(new Mahasiswa("2205101", "Kelvin Julian Putra", "Laki-laki", "Mandiri"));
-        listMahasiswa.add(new Mahasiswa("2200163", "Rifanny Lysara Annastasya", "Perempuan", "SNBT"));
-        listMahasiswa.add(new Mahasiswa("2202869", "Revana Faliha Salma", "Perempuan", "SNBP"));
-        listMahasiswa.add(new Mahasiswa("2209489", "Rakha Dhifiargo Hariadi", "Laki-laki", "Mandiri"));
-        listMahasiswa.add(new Mahasiswa("2203142", "Roshan Syalwan Nurilham", "Laki-laki", "SNBT"));
-        listMahasiswa.add(new Mahasiswa("2200311", "Raden Rahman Ismail", "Laki-laki", "SNBP"));
-        listMahasiswa.add(new Mahasiswa("2200978", "Ratu Syahirah Khairunnisa", "Perempuan", "Mandiri"));
-        listMahasiswa.add(new Mahasiswa("2204509", "Muhammad Fahreza Fauzan", "Laki-laki", "SNBT"));
-        listMahasiswa.add(new Mahasiswa("2205027", "Muhammad Rizki Revandi", "Laki-laki", "SNBP"));
-        listMahasiswa.add(new Mahasiswa("2203484", "Arya Aydin Margono", "Laki-laki", "Mandiri"));
-        listMahasiswa.add(new Mahasiswa("2200481", "Marvel Ravindra Dioputra", "Laki-laki", "SNBT"));
-        listMahasiswa.add(new Mahasiswa("2209889", "Muhammad Fadlul Hafiizh", "Laki-laki", "SNBP"));
-        listMahasiswa.add(new Mahasiswa("2206697", "Rifa Sania", "Perempuan", "Mandiri"));
-        listMahasiswa.add(new Mahasiswa("2207260", "Imam Chalish Rafidhul Haque", "Laki-laki", "SNBT"));
-        listMahasiswa.add(new Mahasiswa("2204343", "Meiva Labibah Putri", "Perempuan", "SNBP"));
-    }
+//    private void populateList() {
+//        listMahasiswa.add(new Mahasiswa("2203999", "Amelia Zalfa Julianti", "Perempuan", "SNBT"));
+//        listMahasiswa.add(new Mahasiswa("2202292", "Muhammad Iqbal Fadhilah", "Laki-laki", "SNBP"));
+//        listMahasiswa.add(new Mahasiswa("2202346", "Muhammad Rifky Afandi", "Laki-laki", "Mandiri"));
+//        listMahasiswa.add(new Mahasiswa("2210239", "Muhammad Hanif Abdillah", "Laki-laki", "SNBT"));
+//        listMahasiswa.add(new Mahasiswa("2202046", "Nurainun", "Perempuan", "SNBP"));
+//        listMahasiswa.add(new Mahasiswa("2205101", "Kelvin Julian Putra", "Laki-laki", "Mandiri"));
+//        listMahasiswa.add(new Mahasiswa("2200163", "Rifanny Lysara Annastasya", "Perempuan", "SNBT"));
+//        listMahasiswa.add(new Mahasiswa("2202869", "Revana Faliha Salma", "Perempuan", "SNBP"));
+//        listMahasiswa.add(new Mahasiswa("2209489", "Rakha Dhifiargo Hariadi", "Laki-laki", "Mandiri"));
+//        listMahasiswa.add(new Mahasiswa("2203142", "Roshan Syalwan Nurilham", "Laki-laki", "SNBT"));
+//        listMahasiswa.add(new Mahasiswa("2200311", "Raden Rahman Ismail", "Laki-laki", "SNBP"));
+//        listMahasiswa.add(new Mahasiswa("2200978", "Ratu Syahirah Khairunnisa", "Perempuan", "Mandiri"));
+//        listMahasiswa.add(new Mahasiswa("2204509", "Muhammad Fahreza Fauzan", "Laki-laki", "SNBT"));
+//        listMahasiswa.add(new Mahasiswa("2205027", "Muhammad Rizki Revandi", "Laki-laki", "SNBP"));
+//        listMahasiswa.add(new Mahasiswa("2203484", "Arya Aydin Margono", "Laki-laki", "Mandiri"));
+//        listMahasiswa.add(new Mahasiswa("2200481", "Marvel Ravindra Dioputra", "Laki-laki", "SNBT"));
+//        listMahasiswa.add(new Mahasiswa("2209889", "Muhammad Fadlul Hafiizh", "Laki-laki", "SNBP"));
+//        listMahasiswa.add(new Mahasiswa("2206697", "Rifa Sania", "Perempuan", "Mandiri"));
+//        listMahasiswa.add(new Mahasiswa("2207260", "Imam Chalish Rafidhul Haque", "Laki-laki", "SNBT"));
+//        listMahasiswa.add(new Mahasiswa("2204343", "Meiva Labibah Putri", "Perempuan", "SNBP"));
+//    }
 
     private void customizeUI() {
         // Set background color
